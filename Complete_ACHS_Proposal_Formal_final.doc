@@ -1,0 +1,75 @@
+# Complete ACHS: A Hierarchical Quantum-Inspired Framework for Safety-Critical Adaptive Home Control
+
+## 1. Abstract
+State-of-the-Art Smart Home Energy Management Systems (SHEMS) often suffer from contextual blindness, where motion-based triggers (PIR) fail to account for specific user preferences (e.g., 'Movie Mode') or critical safety states (e.g., gas leakage). This paper introduces the Complete Context-Aware Adaptive Home Control System (ACHS). The architecture utilizes a Hierarchical Edge-Fog-Cloud Continuum where optimization is formulated as a Quadratic Unconstrained Binary Optimization (QUBO) problem, solved via Cloud-based Quantum-Inspired Digital Annealing (Q-IDA). By offloading complex combinatorial pre-optimization to the cloud, on-device policy convergence is significantly accelerated. The system integrates a formal Neuro-Symbolic Cognitive Shield and a physics-based Digital Twin (RC-Network model) to ensure that all autonomous actions satisfy strict safety and comfort constraints. Communication is handled via a multi-protocol stack (MQTT 5.0, gRPC, Protobuf) with X.509 certificate-based identity provisioning.
+
+---
+
+## 2. Formal Problem Statement & Complexity Analysis
+
+### 2.1 Contextual and Safety Dissonance
+1. Contextual Ambiguity (The Movie Paradox): Trivial PIR triggers fail when motion is detected during low-light/high-occupancy preference states.
+2. Safety-Action Conflict (The Gas-Spark Paradox): In gas-leakage scenarios (MQ-sensor trigger), standard automation may trigger mechanical relays, creating ignition arcs.
+3. Combinatorial Explosion: With N sensors and M actuators, each with K states, the search space S = K^N grows exponentially. For a modest home (N=50, M=10), the state-action space exceeds 10^9 combinations, rendering classical RL slow for real-time convergence.
+
+---
+
+## 3. Mathematical Foundations
+
+### 3.1 Physics-Based Digital Twin (RC Thermal Model)
+The home's thermodynamic state is modeled as a first-order differential equation:
+T(t+1) = T(t) + (delta_t / C) * [ (T_ext - T(t))/R + eta * P_hvac + sigma * Lux + gamma * N_occ ]
+
+Where:
+- C: Thermal Capacitance of the zone.
+- R: Thermal Resistance (insulation).
+- Lux: Solar gain coefficient.
+- N_occ: Heat load per occupant.
+
+### 3.2 Optimization Formulation (QUBO)
+The multi-objective decision problem is converted to a Quadratic Unconstrained Binary Optimization (QUBO) form for Quantum-Inspired Annealing:
+min Obj(x) = sum(a_i * x_i) + sum(b_ij * x_i * x_j)
+
+Where x is in {0, 1} represents actuator states (x1: HVAC ON/OFF, x2: Light dim/bright).
+- a_i: Linear costs (Energy/Price).
+- b_ij: Quadratic penalties (e.g., Discomfort if HVAC is off while Light is on).
+
+---
+
+## 4. Hierarchical Continuum & Fallback Behavior
+
+| Layer | Function | Latency Target | Fallback Strategy |
+| :--- | :--- | :--- | :--- |
+| Edge (ESP32) | Veto Logic / Safety Interlocks | < 10ms | Autonomous Safety (Hardcoded Veto) |
+| Fog (Pi 5) | DT Inference / Policy Execution | < 100ms | Local Policy (Cached Cloud Meta-Policy) |
+| Cloud (Q-IDA) | QUBO Annealing / Meta-Learning | > 1s | Passive (Fog relies on local heuristics) |
+
+### 4.1 Safety Shield Model
+A formal safety constraint function C(s, a) is defined:
+C(s, a) = 0 if gas < threshold AND relay_arc = safe, else 1.
+
+The system uses Solid State Relays (SSR) to eliminate ignition risks found in mechanical variants.
+
+---
+
+## 5. Multi-Protocol Protocol Interaction
+
+### 5.1 Telemetry Plane (MQTT 5.0)
+- Topic Structure: home/zone1/sensor/protobuf/raw
+- Features Used: User Properties, Topic Aliasing, Session Expiry.
+
+### 5.2 Control Plane (gRPC over HTTP/2)
+- Channel 1 (Policy): Cloud pushes updated QUBO weights to Fog.
+- Channel 2 (Command): Fog issues direct gRPC calls to Edge nodes with mandatory Acknowledgment (ACK).
+
+### 5.3 Security & Identity
+- Mutual TLS (mTLS 1.3): Full handshake required for initial provisioning.
+- Provisioning: X.509 certificates managed by a local Certificate Authority (CA) on the Fog node.
+
+---
+
+## 6. Evaluation Methodology & Baselines
+The system will be evaluated against:
+1. Baseline A: Classical Rule-Based (Static Thresholds).
+2. Baseline B: Standard DRL (PPO without safety shield).
+3. Metrics: Energy Efficiency (kWh), Comfort Deviation (PMV units), Convergence Time (Training episodes), and Safety Violation Count.
